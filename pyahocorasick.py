@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #---------------------------------------------------------------------------
+import Queue
 
 class AhoCorasick(object):
     class Node(object):
@@ -42,23 +43,25 @@ class AhoCorasick(object):
         node.terms.append(term)
         
     def _make_failure_links(self):
+        queue = Queue.Queue()
         for node in self.root.next.values():
             node.failure_link = self.root
+            queue.put(node)
         def _make(_node):
             for (char, node) in _node.next.items():
                 failure_link = _node.failure_link
+                while failure_link != self.root and char not in failure_link.next:
+                    failure_link = failure_link.failure_link
                 if char in failure_link.next:
                     node.failure_link = failure_link.next[char]
                 else:
-                    if char in self.root.next:
-                        node.failure_link = self.root.next[char]
-                    else:
-                        node.failure_link = self.root
+                    node.failure_link = self.root
                 if node.failure_link.terms:
                     node.terms.extend(node.failure_link.terms)
-                _make(node)
-        for node in self.root.next.values():
-            _make(node)
+                queue.put(node)
+        while queue.qsize() > 0:
+            node = queue.get()
+            _make(node, queue)
     
     def match(self, query):
         results = []
